@@ -18,7 +18,6 @@ pub struct Scanner<'a> {
     src_iter: MultiPeek<Chars<'a>>,
     lexeme: String,
     line_number: u32,
-    index: u32,
 }
 
 impl Scanner<'_> {
@@ -26,7 +25,6 @@ impl Scanner<'_> {
         let ch = self.src_iter.next();
 
         if let Some(ch) = ch {
-            self.index += 1;
             self.lexeme.push(ch);
         }
 
@@ -105,35 +103,78 @@ impl Scanner<'_> {
                     self.consume_string();
                     TokenType::Str
                 }
-                _ => TokenType::Unknown,
+                _ => if ch.is_digit(10) {
+                    self.consume_number();
+                    TokenType::Number
+                } else if ch.is_alphabetic() {
+                    self.consume_identifier();
+                    match self.is_reserved_keyword() {
+                        Some(token_type) => token_type,
+                        None => TokenType::Identifier
+                    }
+                } else {
+                    TokenType::Unknown
+                },
             })
             .map(|token_type| {
                 let token = Token {
                     token_type: token_type,
                     lexeme: self.lexeme.clone(),
                     line_number: self.line_number,
-                    char_index: self.index,
                 };
                 self.lexeme = String::from("");
                 token
             })
     }
 
-    fn consume_string(&mut self) -> Result<String, Error> {
+    fn consume_string(&mut self) {
         while let Some(ch) = self.src_iter.peek() {
             if ch == &'"' {
                 break;
             }
             self.advance();
         }
+        self.advance();
+    }
 
-        match self.advance() {
-            Some(_ch) => Ok(self.lexeme.clone()),
-            None => Err(Error::Lexical(
-                self.index,
-                "Expected end of string".to_string(),
-                "Did not find closing \"".to_string(),
-            )),
+    fn consume_number(&mut self) {
+        while let Some(ch) = self.src_iter.peek() {
+            if !ch.is_digit(10) {
+                break;
+            }
+            self.advance();
+        }
+        // TODO: handle decimal numbers
+    }
+
+    fn consume_identifier(&mut self) {
+        while let Some(ch) = self.src_iter.peek() {
+          if !ch.is_alphanumeric() {
+              break;
+          }
+          self.advance();
+        }
+    }
+
+    fn is_reserved_keyword(&mut self) -> Option<TokenType> {
+        match self.lexeme.as_str() {
+            "and" => Some(TokenType::And),
+            "class" => Some(TokenType::Class),
+            "else" => Some(TokenType::Else),
+            "false" => Some(TokenType::False),
+            "for" => Some(TokenType::For),
+            "fun" => Some(TokenType::Fun),
+            "if" => Some(TokenType::If),
+            "nil" => Some(TokenType::Nil),
+            "or" => Some(TokenType::Or),
+            "print" => Some(TokenType::Print),
+            "return" => Some(TokenType::Return),
+            "super" => Some(TokenType::Super),
+            "this" => Some(TokenType::This),
+            "true" => Some(TokenType::True),
+            "var" => Some(TokenType::Var),
+            "while" => Some(TokenType::While),
+            _ => None
         }
     }
 }
@@ -144,7 +185,6 @@ pub fn scan_tokens(source: &String) -> Vec<Token> {
         src_iter: multipeek(source.chars()),
         lexeme: String::from(""),
         line_number: 0u32,
-        index: 0u32,
     };
 
     while let Some(token) = scanner.scan_token() {
@@ -155,7 +195,6 @@ pub fn scan_tokens(source: &String) -> Vec<Token> {
         token_type: TokenType::Eof,
         lexeme: String::from(""),
         line_number: scanner.line_number as u32,
-        char_index: scanner.index + 1 as u32,
     });
     tokens
 }

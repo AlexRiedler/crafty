@@ -58,5 +58,4 @@ pub struct Token {
     pub token_type: TokenType,
     pub lexeme: String,
     pub line_number: u32,
-    pub char_index: u32,
 }

@@ -1,1 +1,4 @@
 var language = "lox";
+var number = 12.34;
+var foobar = 7;
+var i7entifi3r = foobar;
