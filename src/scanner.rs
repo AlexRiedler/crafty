@@ -108,10 +108,7 @@ impl Scanner<'_> {
                     TokenType::Number
                 } else if ch.is_alphabetic() {
                     self.consume_identifier();
-                    match self.is_reserved_keyword() {
-                        Some(token_type) => token_type,
-                        None => TokenType::Identifier
-                    }
+                    self.identifier_token_type()
                 } else {
                     TokenType::Unknown
                 },
@@ -156,25 +153,25 @@ impl Scanner<'_> {
         }
     }
 
-    fn is_reserved_keyword(&mut self) -> Option<TokenType> {
+    fn identifier_token_type(&mut self) -> TokenType {
         match self.lexeme.as_str() {
-            "and" => Some(TokenType::And),
-            "class" => Some(TokenType::Class),
-            "else" => Some(TokenType::Else),
-            "false" => Some(TokenType::False),
-            "for" => Some(TokenType::For),
-            "fun" => Some(TokenType::Fun),
-            "if" => Some(TokenType::If),
-            "nil" => Some(TokenType::Nil),
-            "or" => Some(TokenType::Or),
-            "print" => Some(TokenType::Print),
-            "return" => Some(TokenType::Return),
-            "super" => Some(TokenType::Super),
-            "this" => Some(TokenType::This),
-            "true" => Some(TokenType::True),
-            "var" => Some(TokenType::Var),
-            "while" => Some(TokenType::While),
-            _ => None
+            "and" => TokenType::And,
+            "class" => TokenType::Class,
+            "else" => TokenType::Else,
+            "false" => TokenType::False,
+            "for" => TokenType::For,
+            "fun" => TokenType::Fun,
+            "if" => TokenType::If,
+            "nil" => TokenType::Nil,
+            "or" => TokenType::Or,
+            "print" => TokenType::Print,
+            "return" => TokenType::Return,
+            "super" => TokenType::Super,
+            "this" => TokenType::This,
+            "true" => TokenType::True,
+            "var" => TokenType::Var,
+            "while" => TokenType::While,
+            _ => TokenType::Identifier
         }
     }
 }
