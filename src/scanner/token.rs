@@ -1,6 +1,6 @@
 
 #[derive(Debug)]
-enum TokenType {
+pub enum TokenType {
     // Single-character tokens.                      
     LeftParen,
     RightParen,
@@ -28,6 +28,7 @@ enum TokenType {
     Identifier,
     Str,
     Number,
+    Comment,
 
     // Keywords.                                     
     And,
@@ -47,12 +48,13 @@ enum TokenType {
     Var,
     While,
 
-    Eof
+    Eof,
 }
 
 #[derive(Debug)]
-struct Token {
-    token_type: TokenType,
-    lexeme: String,
-    line: i64
+pub struct Token {
+    pub token_type: TokenType,
+    pub lexeme: String,
+    pub line_number: u32,
+    pub char_index: u32,
 }

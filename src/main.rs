@@ -2,7 +2,8 @@ use std::env;
 use std::fs;
 use std::io;
 use std::io::Write;
-mod token;
+mod scanner;
+use scanner::token::Token;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -40,10 +41,10 @@ fn run_prompt() {
 
 
 fn run(source: &String) {
-    let tokens: Vec<&str> = source.trim().split(' ').collect();
+    let tokens: Vec<Token> = scanner::scan_tokens(source);
 
     for token in tokens.iter() {
-        println!("{}", token);
+        println!("{:?}", token);
     }
 }
 
