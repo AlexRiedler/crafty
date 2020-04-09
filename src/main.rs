@@ -2,6 +2,7 @@ use std::env;
 use std::fs;
 use std::io;
 use std::io::Write;
+use std::process::exit;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -39,9 +40,17 @@ fn run_prompt() {
 
 
 fn run(source: &String) {
-    let tokens: Vec<&str> = source.split(' ').collect();
+    let tokens: Vec<&str> = source.trim().split(' ').collect();
 
     for token in tokens.iter() {
         println!("{}", token);
     }
+}
+
+fn error(line: i64, message: &String) {
+    report(line, &"".to_string(), message);
+}
+
+fn report(line: i64, location: &String, message: &String) {
+    println!("[line {}] Error {}: {}", line, location, message);
 }
