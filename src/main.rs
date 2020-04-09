@@ -2,7 +2,7 @@ use std::env;
 use std::fs;
 use std::io;
 use std::io::Write;
-use std::process::exit;
+mod token;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
