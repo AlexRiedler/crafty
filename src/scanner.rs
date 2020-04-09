@@ -12,7 +12,6 @@ pub enum Error {
     Lexical(u32, String, String),
 
     Runtime(String),
-    UnexpectedEol(),
 }
 
 pub struct Scanner<'a> {
@@ -47,95 +46,116 @@ impl Scanner<'_> {
         last
     }
 
-    fn scan_token(&mut self) -> Result<Token, Error> {
-        let token_type_result = match self.advance() {
-            Some('(') => Ok(TokenType::LeftParen),
-            Some(')') => Ok(TokenType::RightParen),
-            Some('{') => Ok(TokenType::LeftBrace),
-            Some('}') => Ok(TokenType::RightBrace),
-            Some(',') => Ok(TokenType::Comma),
-            Some('.') => Ok(TokenType::Dot),
-            Some('-') => Ok(TokenType::Minus),
-            Some('+') => Ok(TokenType::Plus),
-            Some(';') => Ok(TokenType::Semicolon),
-            Some('*') => Ok(TokenType::Star),
-            Some('!') => match self.src_iter.peek() {
-                Some('=') => {
-                    self.advance();
-                    Ok(TokenType::BangEqual)
+    fn scan_token(&mut self) -> Option<Token> {
+        self.advance()
+            .map(|ch| match ch {
+                '(' => TokenType::LeftParen,
+                ')' => TokenType::RightParen,
+                '{' => TokenType::LeftBrace,
+                '}' => TokenType::RightBrace,
+                ',' => TokenType::Comma,
+                '.' => TokenType::Dot,
+                '-' => TokenType::Minus,
+                '+' => TokenType::Plus,
+                ';' => TokenType::Semicolon,
+                '*' => TokenType::Star,
+                '!' => match self.src_iter.peek() {
+                    Some('=') => {
+                        self.advance();
+                        TokenType::BangEqual
+                    }
+                    _ => TokenType::Bang,
+                },
+                '=' => match self.src_iter.peek() {
+                    Some('=') => {
+                        self.advance();
+                        TokenType::EqualEqual
+                    }
+                    _ => TokenType::Equal,
+                },
+                '<' => match self.src_iter.peek() {
+                    Some('=') => {
+                        self.advance();
+                        TokenType::LessEqual
+                    }
+                    _ => TokenType::Equal,
+                },
+                '>' => match self.src_iter.peek() {
+                    Some('=') => {
+                        self.advance();
+                        TokenType::GreaterEqual
+                    }
+                    _ => TokenType::Equal,
+                },
+                '/' => match self.src_iter.peek() {
+                    Some('/') => {
+                        while self.advance() != None {}
+                        TokenType::Comment
+                    }
+                    _ => TokenType::Slash,
+                },
+                ' ' => TokenType::Whitespace,
+                '\t' => TokenType::Whitespace,
+                '\r' => TokenType::Whitespace,
+                '\n' => {
+                    self.line_number += 1;
+                    TokenType::Whitespace
                 }
-                _ => Ok(TokenType::Bang),
-            },
-            Some('=') => match self.src_iter.peek() {
-                Some('=') => {
-                    self.advance();
-                    Ok(TokenType::EqualEqual)
+                '"' => {
+                    self.consume_string();
+                    TokenType::Str
                 }
-                _ => Ok(TokenType::Equal),
-            },
-            Some('<') => match self.src_iter.peek() {
-                Some('=') => {
-                    self.advance();
-                    Ok(TokenType::LessEqual)
-                }
-                _ => Ok(TokenType::Equal),
-            },
-            Some('>') => match self.src_iter.peek() {
-                Some('=') => {
-                    self.advance();
-                    Ok(TokenType::GreaterEqual)
-                }
-                _ => Ok(TokenType::Equal),
-            },
-            Some('/') => match self.src_iter.peek() {
-                Some('/') => {
-                    while self.advance() != None {}
-                    Ok(TokenType::Comment)
-                }
-                _ => Ok(TokenType::Slash),
-            },
-            Some(ch) => {
-                return Err(Error::Lexical(
-                    self.line_number,
-                    self.lexeme.clone(),
-                    format!("Unexpected character '{}'", ch).to_string(),
-                ))
-            }
-            None => return Err(Error::UnexpectedEol()),
-        };
+                _ => TokenType::Unknown,
+            })
+            .map(|token_type| {
+                let token = Token {
+                    token_type: token_type,
+                    lexeme: self.lexeme.clone(),
+                    line_number: self.line_number,
+                    char_index: self.index,
+                };
+                self.lexeme = String::from("");
+                token
+            })
+    }
 
-        token_type_result.map(|token_type| Token {
-            token_type: token_type,
-            lexeme: self.lexeme.clone(),
-            line_number: self.line_number,
-            char_index: self.index,
-        })
+    fn consume_string(&mut self) -> Result<String, Error> {
+        while let Some(ch) = self.src_iter.peek() {
+            if ch == &'"' {
+                break;
+            }
+            self.advance();
+        }
+
+        match self.advance() {
+            Some(_ch) => Ok(self.lexeme.clone()),
+            None => Err(Error::Lexical(
+                self.index,
+                "Expected end of string".to_string(),
+                "Did not find closing \"".to_string(),
+            )),
+        }
     }
 }
 
 pub fn scan_tokens(source: &String) -> Vec<Token> {
     let mut tokens: Vec<Token> = Vec::new();
+    let mut scanner = Scanner {
+        src_iter: multipeek(source.chars()),
+        lexeme: String::from(""),
+        line_number: 0u32,
+        index: 0u32,
+    };
 
-    let lines: Vec<&str> = source.split("\n").collect();
-    for (line_no, line) in lines.iter().enumerate() {
-        let mut scanner = Scanner {
-            src_iter: multipeek(line.chars()),
-            lexeme: String::from(""),
-            line_number: line_no as u32,
-            index: 0u32,
-        };
-
-        match scanner.scan_token() {
-            Ok(token) => tokens.push(token),
-            Err(_e) => {}
-        }
+    while let Some(token) = scanner.scan_token() {
+        tokens.push(token)
     }
 
     tokens.push(Token {
         token_type: TokenType::Eof,
         lexeme: String::from(""),
-        line_number: lines.len() as u32,
-        char_index: 0 as u32,
+        line_number: scanner.line_number as u32,
+        char_index: scanner.index + 1 as u32,
     });
     tokens
 }
