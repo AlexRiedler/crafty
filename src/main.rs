@@ -1,5 +1,7 @@
 use std::env;
 use std::fs;
+use std::io;
+use std::io::Write;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -17,13 +19,29 @@ fn run_file(filename: &String) {
     let contents = fs::read_to_string(filename)
         .expect("Something went wrong reading the file");
 
-    run(contents);
+    run(&contents);
 }
 
 fn run_prompt() {
-    println!("Prompt not implemented yet!");
+    loop {
+        print!("> ");
+        io::stdout().flush().unwrap();
+
+        let mut line = String::new();
+
+        io::stdin().read_line(&mut line)
+            .ok()
+            .expect("Failed to read line");
+
+        run(&line);
+    }
 }
 
 
-fn run(contents: String) {
+fn run(source: &String) {
+    let tokens: Vec<&str> = source.split(' ').collect();
+
+    for token in tokens.iter() {
+        println!("{}", token);
+    }
 }
