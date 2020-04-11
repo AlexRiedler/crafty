@@ -6,15 +6,18 @@ use core::slice::Iter;
 pub struct ParseError;
 
 pub struct Parser<'a> {
-    iter: MultiPeek<Iter<'a, Token>>,
-    current: Option<'a Token>,
-    previous: Option<'a Token>,
+    pub iter: MultiPeek<Iter<'a, Token>>,
+    pub current: Option<&'a Token>,
+    pub previous: Option<&'a Token>,
 }
 
 pub enum Expr {
-    Binary(Box<Expr>, Box<Token>, Box<Expr>),
-    Unary(Box<Token>, Box<Expr>),
+    Binary(Box<Expr>, Box<Expr>, Box<Expr>),
+    Unary(Box<Expr>, Box<Expr>),
+    Operator(String),
     BoolLiteral(bool),
+    StringLiteral(String),
+    NumberLiteral(String),
 }
 
 impl Parser<'_> {
@@ -24,14 +27,14 @@ impl Parser<'_> {
         self.current
     }
 
-    fn previous_token(&mut self) -> Result<Box<Token>, ParseError> {
-        return match self.previous {
-            Some(token) => Ok(Box::new(*token)),
+    fn previous_token(&mut self) -> Result<Box<Expr>, ParseError> {
+        return match &self.previous {
+            Some(token) => Ok(Box::new(Expr::Operator(token.lexeme.to_string()))),
             None => Err(ParseError{}),
         }
     }
 
-    fn expression(&mut self) -> Result<Box<Expr>, ParseError> {
+    pub fn expression(&mut self) -> Result<Box<Expr>, ParseError> {
         return self.equality();
     }
 
@@ -101,7 +104,16 @@ impl Parser<'_> {
             return Ok(Box::new(Expr::BoolLiteral(true)));
         }
         if self.token_match(&[TokenType::Number]) {
-            // return Ok(Box::new(Expr::NumberLiteral(self.previous.lexeme)));
+            match &self.previous {
+                Some(token) => return Ok(Box::new(Expr::NumberLiteral(token.lexeme.to_string()))),
+                None => return Err(ParseError{})
+            }
+        }
+        if self.token_match(&[TokenType::Str]) {
+            match &self.previous {
+                Some(token) => return Ok(Box::new(Expr::StringLiteral(token.lexeme.to_string()))),
+                None => return Err(ParseError{})
+            }
         }
 
         return Err(ParseError{})
