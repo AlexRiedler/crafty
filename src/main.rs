@@ -65,7 +65,12 @@ fn run_prompt() {
 
 
 fn run(source: &String) {
-    let tokens: Vec<Token> = scanner::scan_tokens(source);
+    let tokens: Vec<Token> =
+        scanner::scan_tokens(source)
+        .into_iter()
+        .filter(|tok| tok.token_type != scanner::token::TokenType::Whitespace)
+        .filter(|tok| tok.token_type != scanner::token::TokenType::Eof)
+        .collect();
 
     for token in tokens.iter() {
         println!("{:?}", token);
@@ -87,12 +92,4 @@ fn run(source: &String) {
             println!("Error parsing");
         }
     }
-}
-
-fn error(line: i64, message: &String) {
-    report(line, &"".to_string(), message);
-}
-
-fn report(line: i64, location: &String, message: &String) {
-    println!("[line {}] Error {}: {}", line, location, message);
 }

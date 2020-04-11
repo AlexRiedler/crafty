@@ -7,13 +7,6 @@ use std::str::Chars;
 use itertools::multipeek;
 use itertools::structs::MultiPeek;
 
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    Lexical(u32, String, String),
-
-    Runtime(String),
-}
-
 pub struct Scanner<'a> {
     src_iter: MultiPeek<Chars<'a>>,
     lexeme: String,
@@ -29,19 +22,6 @@ impl Scanner<'_> {
         }
 
         return ch;
-    }
-
-    fn advance_until(&mut self, until: char) -> Option<char> {
-        let mut last = None;
-        while let Some(ch) = self.src_iter.peek() {
-            if *ch == until {
-                break;
-            } else {
-                last = Some(*ch);
-                self.advance();
-            }
-        }
-        last
     }
 
     fn scan_token(&mut self) -> Option<Token> {

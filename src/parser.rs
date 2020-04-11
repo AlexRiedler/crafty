@@ -35,6 +35,7 @@ impl Parser<'_> {
     }
 
     pub fn expression(&mut self) -> Result<Box<Expr>, ParseError> {
+        self.advance();
         return self.equality();
     }
 
@@ -77,7 +78,7 @@ impl Parser<'_> {
     fn multiplication(&mut self) -> Result<Box<Expr>, ParseError> {
         let mut expr = self.unary()?;
 
-        while self.token_match(&[TokenType::Minus, TokenType::Plus]) {
+        while self.token_match(&[TokenType::Slash, TokenType::Star]) {
             let operator = self.previous_token()?;
             let right = self.unary()?;
             expr = Box::new(Expr::Binary(expr, operator, right));
