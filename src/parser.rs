@@ -7,8 +7,8 @@ pub struct ParseError;
 
 pub struct Parser<'a> {
     iter: MultiPeek<Iter<'a, Token>>,
-    current: Option<&'a Token>,
-    previous: Option<&'a Token>,
+    current: Option<'a Token>,
+    previous: Option<'a Token>,
 }
 
 pub enum Expr {
