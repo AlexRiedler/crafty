@@ -1,12 +1,13 @@
 use crate::scanner::token::Token;
 use crate::scanner::token::TokenType;
-use itertools::structs::MultiPeek;
+
+use std::iter::Peekable;
 use core::slice::Iter;
 
 pub struct ParseError;
 
 pub struct Parser<'a> {
-    pub iter: MultiPeek<Iter<'a, Token>>,
+    pub iter: Peekable<Iter<'a, Token>>,
     pub current: Option<&'a Token>,
     pub previous: Option<&'a Token>,
 }

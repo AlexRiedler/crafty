@@ -9,8 +9,6 @@ mod parser;
 use parser::Expr;
 use parser::Parser;
 
-use itertools::multipeek;
-
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() > 2 {
@@ -77,7 +75,7 @@ fn run(source: &String) {
     }
 
     let mut parser = Parser{
-        iter: multipeek(tokens.iter()),
+        iter: tokens.iter().peekable(),
         current: None,
         previous: None,
     };
