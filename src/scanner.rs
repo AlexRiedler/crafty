@@ -3,12 +3,10 @@ use token::Token;
 use token::TokenType;
 
 use std::str::Chars;
-
-use itertools::multipeek;
-use itertools::structs::MultiPeek;
+use std::iter::Peekable;
 
 pub struct Scanner<'a> {
-    src_iter: MultiPeek<Chars<'a>>,
+    src_iter: Peekable<Chars<'a>>,
     lexeme: String,
     line_number: u32,
 }
@@ -121,7 +119,18 @@ impl Scanner<'_> {
             }
             self.advance();
         }
-        // TODO: handle decimal numbers
+
+        match self.src_iter.peek() {
+            Some(&'.') => self.advance(),
+            _ => return,
+        };
+
+        while let Some(ch) = self.src_iter.peek() {
+            if !ch.is_digit(10) {
+                break;
+            }
+            self.advance();
+        }
     }
 
     fn consume_identifier(&mut self) {
@@ -159,7 +168,7 @@ impl Scanner<'_> {
 pub fn scan_tokens(source: &String) -> Vec<Token> {
     let mut tokens: Vec<Token> = Vec::new();
     let mut scanner = Scanner {
-        src_iter: multipeek(source.chars()),
+        src_iter: source.chars().peekable(),
         lexeme: String::from(""),
         line_number: 0u32,
     };
