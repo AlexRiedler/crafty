@@ -56,14 +56,14 @@ impl Scanner<'_> {
                         self.advance();
                         TokenType::LessEqual
                     }
-                    _ => TokenType::Equal,
+                    _ => TokenType::Less,
                 },
                 '>' => match self.src_iter.peek() {
                     Some('=') => {
                         self.advance();
                         TokenType::GreaterEqual
                     }
-                    _ => TokenType::Equal,
+                    _ => TokenType::Greater,
                 },
                 '/' => match self.src_iter.peek() {
                     Some('/') => {

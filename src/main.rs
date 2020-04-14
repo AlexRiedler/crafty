@@ -69,20 +69,15 @@ fn run(source: &String) {
         scanner::scan_tokens(source)
         .into_iter()
         .filter(|tok| tok.token_type != scanner::token::TokenType::Whitespace)
-        .filter(|tok| tok.token_type != scanner::token::TokenType::Eof)
+        .inspect(|tok| println!("{:?}", tok))
         .collect();
-
-    for token in tokens.iter() {
-        println!("{:?}", token);
-    }
 
     let mut parser = Parser{
         iter: tokens.iter().peekable(),
         current: None,
         previous: None,
     };
-    let expr = parser.parse();
-    match expr {
+    match parser.parse() {
         Ok(result) => {
             let mut printer = AstPrinter{};
             let string = printer.visit_expr(&result);

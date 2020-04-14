@@ -169,8 +169,8 @@ impl Parser<'_> {
         match self.current {
             Some(token) =>
                 match token.token_type {
-                    TokenType::Eof => ParseError{message: format!("{} at end: {}", token.line_number, message) },
-                    _ => ParseError{message: format!("{} at '{}': {}", token.line_number, token.lexeme, message) },
+                    TokenType::Eof => ParseError{message: format!("{} at end of file {}:{}", message, token.line_number, token.column_number) },
+                    _ => ParseError{message: format!("{} at '{}' line {}:{}", message, token.lexeme, token.line_number, token.column_number) },
                 }
             None => ParseError{message: format!("unexpected EOF: {}", message)}
         }
