@@ -9,11 +9,13 @@ pub struct Scanner<'a> {
     src_iter: Peekable<Chars<'a>>,
     lexeme: String,
     line_number: u32,
+    column_number: u32,
 }
 
 impl Scanner<'_> {
     fn advance(&mut self) -> Option<char> {
         let ch = self.src_iter.next();
+        self.column_number += 1;
 
         if let Some(ch) = ch {
             self.lexeme.push(ch);
@@ -73,10 +75,7 @@ impl Scanner<'_> {
                 ' ' => TokenType::Whitespace,
                 '\t' => TokenType::Whitespace,
                 '\r' => TokenType::Whitespace,
-                '\n' => {
-                    self.line_number += 1;
-                    TokenType::Whitespace
-                }
+                '\n' => TokenType::Newline,
                 '"' => {
                     self.consume_string();
                     TokenType::Str
@@ -92,11 +91,21 @@ impl Scanner<'_> {
                 },
             })
             .map(|token_type| {
+                let column_number = self.column_number - self.lexeme.len() as u32;
+                let line_number = self.line_number;
+
+                if token_type == TokenType::Newline {
+                    self.line_number += 1;
+                    self.column_number = 0;
+                }
+
                 let token = Token {
                     token_type: token_type,
                     lexeme: self.lexeme.clone(),
-                    line_number: self.line_number,
+                    line_number: line_number,
+                    column_number: column_number,
                 };
+
                 self.lexeme = String::from("");
                 token
             })
@@ -170,7 +179,8 @@ pub fn scan_tokens(source: &String) -> Vec<Token> {
     let mut scanner = Scanner {
         src_iter: source.chars().peekable(),
         lexeme: String::from(""),
-        line_number: 0u32,
+        line_number: 1u32,
+        column_number: 0u32,
     };
 
     while let Some(token) = scanner.scan_token() {
@@ -181,6 +191,7 @@ pub fn scan_tokens(source: &String) -> Vec<Token> {
         token_type: TokenType::Eof,
         lexeme: String::from(""),
         line_number: scanner.line_number as u32,
+        column_number: scanner.column_number as u32,
     });
     tokens
 }

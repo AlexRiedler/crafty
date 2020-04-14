@@ -49,6 +49,7 @@ pub enum TokenType {
     While,
 
     Whitespace,
+    Newline,
     Unknown,
     Eof,
 }
@@ -58,4 +59,5 @@ pub struct Token {
     pub token_type: TokenType,
     pub lexeme: String,
     pub line_number: u32,
+    pub column_number: u32,
 }
