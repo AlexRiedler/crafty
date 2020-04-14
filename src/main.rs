@@ -4,11 +4,16 @@ use std::io;
 use std::io::Write;
 mod scanner;
 use scanner::token::Token;
+use scanner::token::TokenType;
 
 mod parser;
 use parser::Expr;
 use parser::Parser;
 use parser::ParseError;
+
+mod runtime;
+use runtime::ExprEvaluator;
+use runtime::RuntimeError;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -33,7 +38,7 @@ impl Visitor<String> for AstPrinter {
             Expr::BoolLiteral(b) => format!("{}", b),
             Expr::StringLiteral(n) => n.to_string(),
             Expr::NumberLiteral(n) => n.to_string(),
-            Expr::Operator(n) => n.to_string(),
+            Expr::Operator(_token_type, n) => n.to_string(),
             Expr::Unary(ref operator, ref rhs) => format!("({} {})", self.visit_expr(operator), self.visit_expr(rhs)),
             Expr::Binary(ref lhs, ref operator, ref rhs) => format!("({} {} {})", self.visit_expr(operator), self.visit_expr(lhs), self.visit_expr(rhs)),
             Expr::Grouping(ref expr) => format!("{}", self.visit_expr(expr)),
@@ -68,7 +73,7 @@ fn run(source: &String) {
     let tokens: Vec<Token> =
         scanner::scan_tokens(source)
         .into_iter()
-        .filter(|tok| tok.token_type != scanner::token::TokenType::Whitespace)
+        .filter(|tok| tok.token_type != TokenType::Whitespace)
         .inspect(|tok| println!("{:?}", tok))
         .collect();
 
@@ -82,6 +87,16 @@ fn run(source: &String) {
             let mut printer = AstPrinter{};
             let string = printer.visit_expr(&result);
             println!("{}", string);
+            let mut evaluator = ExprEvaluator{};
+            let number = evaluator.visit_expr(&result);
+            match number {
+                Ok(result) => {
+                    println!("{}", result);
+                }
+                Err(RuntimeError{message}) => {
+                    println!("Error evaluating: {}", message);
+                }
+            }
         },
         Err(ParseError{message}) => {
             println!("Error parsing: {}", message);

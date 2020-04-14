@@ -18,7 +18,7 @@ pub enum Expr {
     Grouping(Box<Expr>),
     Binary(Box<Expr>, Box<Expr>, Box<Expr>),
     Unary(Box<Expr>, Box<Expr>),
-    Operator(String),
+    Operator(TokenType, String),
     BoolLiteral(bool),
     StringLiteral(String),
     NumberLiteral(String),
@@ -38,7 +38,7 @@ impl Parser<'_> {
 
     fn previous_token(&mut self) -> Result<Box<Expr>, ParseError> {
         return match &self.previous {
-            Some(token) => Ok(Box::new(Expr::Operator(token.lexeme.to_string()))),
+            Some(token) => Ok(Box::new(Expr::Operator(token.token_type.clone(), token.lexeme.to_string()))),
             None => Err(self.error("Internal Parser Error: No previous token found".to_string())),
         }
     }
