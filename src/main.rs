@@ -7,13 +7,14 @@ use scanner::token::Token;
 use scanner::token::TokenType;
 
 mod parser;
-use parser::Expr;
 use parser::Parser;
 use parser::ParseError;
 
 mod runtime;
 use runtime::ExprEvaluator;
-use runtime::RuntimeError;
+
+mod printer;
+use printer::AstPrinter;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -24,25 +25,6 @@ fn main() {
         run_file(filename);
     } else {
         run_prompt();
-    }
-}
-
-pub trait Visitor<T> {
-    fn visit_expr(&mut self, e: &Expr) -> T;
-}
-
-pub struct AstPrinter;
-impl Visitor<String> for AstPrinter {
-    fn visit_expr(&mut self, e: &Expr) -> String {
-        match &*e {
-            Expr::BoolLiteral(b) => format!("{}", b),
-            Expr::StringLiteral(n) => n.to_string(),
-            Expr::NumberLiteral(n) => n.to_string(),
-            Expr::Operator(_token_type, n) => n.to_string(),
-            Expr::Unary(ref operator, ref rhs) => format!("({} {})", self.visit_expr(operator), self.visit_expr(rhs)),
-            Expr::Binary(ref lhs, ref operator, ref rhs) => format!("({} {} {})", self.visit_expr(operator), self.visit_expr(lhs), self.visit_expr(rhs)),
-            Expr::Grouping(ref expr) => format!("{}", self.visit_expr(expr)),
-        }
     }
 }
 
@@ -83,20 +65,9 @@ fn run(source: &String) {
         previous: None,
     };
     match parser.parse() {
-        Ok(result) => {
-            let mut printer = AstPrinter{};
-            let string = printer.visit_expr(&result);
-            println!("{}", string);
-            let mut evaluator = ExprEvaluator{};
-            let number = evaluator.visit_expr(&result);
-            match number {
-                Ok(result) => {
-                    println!("{}", result);
-                }
-                Err(RuntimeError{message}) => {
-                    println!("Error evaluating: {}", message);
-                }
-            }
+        Ok(expr) => {
+            AstPrinter{}.print(&expr);
+            ExprEvaluator{}.evaluate(&expr);
         },
         Err(ParseError{message}) => {
             println!("Error parsing: {}", message);

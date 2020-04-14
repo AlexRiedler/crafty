@@ -1,5 +1,5 @@
-use crate::Visitor;
 use crate::parser::Expr;
+use crate::parser::Visitor;
 use crate::scanner::token::TokenType;
 
 pub struct RuntimeError {
@@ -24,8 +24,22 @@ pub enum Operator {
 
 pub struct ExprEvaluator;
 
+impl ExprEvaluator {
+    pub fn evaluate(&self, e: &Expr) {
+        let result = self.visit_expr(e);
+        match result {
+            Ok(number) => {
+                println!("{}", number);
+            }
+            Err(RuntimeError{message}) => {
+                println!("Error evaluating: {}", message);
+            }
+        }
+    }
+}
+
 impl Visitor<Result<f64, RuntimeError>> for ExprEvaluator {
-    fn visit_expr(&mut self, e: &Expr) -> Result<f64, RuntimeError> {
+    fn visit_expr(&self, e: &Expr) -> Result<f64, RuntimeError> {
         match &*e {
             Expr::BoolLiteral(b) => Ok(bool_to_f64(*b)),
             Expr::StringLiteral(n) => Err(RuntimeError{message: format!("Found unexpected string literal {}", n)}),

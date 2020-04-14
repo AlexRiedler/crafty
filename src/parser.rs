@@ -24,6 +24,10 @@ pub enum Expr {
     NumberLiteral(String),
 }
 
+pub trait Visitor<T> {
+    fn visit_expr(&self, e: &Expr) -> T;
+}
+
 impl Parser<'_> {
     pub fn parse(&mut self) -> Result<Box<Expr>, ParseError> {
         self.advance();
