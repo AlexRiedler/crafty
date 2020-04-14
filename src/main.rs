@@ -8,6 +8,7 @@ use scanner::token::Token;
 mod parser;
 use parser::Expr;
 use parser::Parser;
+use parser::ParseError;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -35,6 +36,7 @@ impl Visitor<String> for AstPrinter {
             Expr::Operator(n) => n.to_string(),
             Expr::Unary(ref operator, ref rhs) => format!("({} {})", self.visit_expr(operator), self.visit_expr(rhs)),
             Expr::Binary(ref lhs, ref operator, ref rhs) => format!("({} {} {})", self.visit_expr(operator), self.visit_expr(lhs), self.visit_expr(rhs)),
+            Expr::Grouping(ref expr) => format!("{}", self.visit_expr(expr)),
         }
     }
 }
@@ -79,15 +81,15 @@ fn run(source: &String) {
         current: None,
         previous: None,
     };
-    let expr = parser.expression();
+    let expr = parser.parse();
     match expr {
         Ok(result) => {
             let mut printer = AstPrinter{};
             let string = printer.visit_expr(&result);
             println!("{}", string);
         },
-        Err(_error) => {
-            println!("Error parsing");
+        Err(ParseError{message}) => {
+            println!("Error parsing: {}", message);
         }
     }
 }
