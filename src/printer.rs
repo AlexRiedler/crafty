@@ -4,7 +4,7 @@ use crate::parser::Statement;
 
 pub struct AstPrinter;
 impl AstPrinter {
-    pub fn print(&self, statements: &Vec<Statement>) {
+    pub fn print(&mut self, statements: &Vec<Statement>) {
         for statement in statements.iter() {
             let string = self.visit_statement(statement);
             println!("{}", string);
@@ -13,7 +13,7 @@ impl AstPrinter {
 }
 
 impl Visitor<String> for AstPrinter {
-    fn visit_expr(&self, e: &Expr) -> String {
+    fn visit_expr(&mut self, e: &Expr) -> String {
         match &*e {
             Expr::BoolLiteral(b) => format!("{}", b),
             Expr::StringLiteral(n) => n.to_string(),
@@ -23,13 +23,20 @@ impl Visitor<String> for AstPrinter {
             Expr::Unary(ref operator, ref rhs) => format!("({} {})", self.visit_expr(operator), self.visit_expr(rhs)),
             Expr::Binary(ref lhs, ref operator, ref rhs) => format!("({} {} {})", self.visit_expr(operator), self.visit_expr(lhs), self.visit_expr(rhs)),
             Expr::Grouping(ref expr) => format!("{}", self.visit_expr(expr)),
+            Expr::Variable(token) => format!("{}", token.lexeme.to_string()),
         }
     }
 
-    fn visit_statement(&self, s: &Statement) -> String {
+    fn visit_statement(&mut self, s: &Statement) -> String {
         match &*s {
             Statement::Expression(ref expr) => self.visit_expr(expr),
             Statement::Print(ref expr) => format!("print {}", self.visit_expr(expr)),
+            Statement::Var(token, initializer) => {
+                match initializer {
+                    Some(expr) => format!("var {} = {}", token.lexeme.to_string(), self.visit_expr(expr)),
+                    None => format!("var {};", token.lexeme.to_string()),
+                }
+            }
         }
     }
 }

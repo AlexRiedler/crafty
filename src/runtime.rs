@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::parser::Expr;
 use crate::parser::Statement;
 use crate::parser::Visitor;
@@ -23,18 +24,46 @@ pub enum Operator {
     Multiply
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Object {
+    Nil(),
     Float(f64),
     Integer(i64),
     Boolean(bool),
     StringLiteral(String),
 }
 
-pub struct ExprEvaluator;
+pub fn build_interpreter() -> ExprEvaluator {
+    ExprEvaluator{
+        environment: Environment{
+            values: HashMap::new(),
+        }
+    }
+}
+
+pub struct Environment {
+    pub values: HashMap<String, Object>
+}
+
+impl Environment {
+    pub fn define(&mut self, name: String, object: Object) {
+        self.values.insert(name, object);
+    }
+
+    pub fn get(&self, name: &String) -> Result<Object, RuntimeError> {
+        match self.values.get(name) {
+            Some(object) => Ok(object.clone()),
+            None => Err(RuntimeError{message: format!("Undefined variable '{}'.", name)}),
+        }
+    }
+}
+
+pub struct ExprEvaluator {
+    environment: Environment,
+}
 
 impl ExprEvaluator {
-    pub fn interpret(&self, statements: &Vec<Statement>) {
+    pub fn interpret(&mut self, statements: &Vec<Statement>) {
         for statement in statements.iter() {
             let result = self.visit_statement(statement);
             match result {
@@ -48,8 +77,9 @@ impl ExprEvaluator {
 }
 
 impl Visitor<Result<Object, RuntimeError>> for ExprEvaluator {
-    fn visit_expr(&self, e: &Expr) -> Result<Object, RuntimeError> {
+    fn visit_expr(&mut self, e: &Expr) -> Result<Object, RuntimeError> {
         match &*e {
+            Expr::Variable(token) => self.environment.get(&token.lexeme),
             Expr::BoolLiteral(b) => Ok(Object::Boolean(*b)),
             Expr::StringLiteral(n) => Ok(Object::StringLiteral(n.to_string())),
             Expr::IntegerLiteral(n) => Ok(Object::Integer(n.parse::<i64>().unwrap())),
@@ -196,13 +226,23 @@ impl Visitor<Result<Object, RuntimeError>> for ExprEvaluator {
         }
     }
 
-    fn visit_statement(&self, s: &Statement) -> Result<Object, RuntimeError> {
+    fn visit_statement(&mut self, s: &Statement) -> Result<Object, RuntimeError> {
         match &*s {
             Statement::Expression(ref expr) => self.visit_expr(expr),
             Statement::Print(ref expr) => {
                 let result = self.visit_expr(expr)?;
                 println!("{}", stringify(&result));
                 Ok(result)
+            },
+            Statement::Var(token, initializer) => {
+                let value =
+                    match initializer {
+                        Some(ref expr) => self.visit_expr(expr)?,
+                        None => Object::Nil()
+                    };
+
+                self.environment.define(token.lexeme.to_string(), value);
+                Ok(Object::Nil())
             }
         }
     }
@@ -210,6 +250,7 @@ impl Visitor<Result<Object, RuntimeError>> for ExprEvaluator {
 
 fn stringify(obj: &Object) -> String {
     match obj {
+        Object::Nil() => format!("nil"),
         Object::Float(float) => format!("{}", float),
         Object::Integer(integer) => format!("{}", integer),
         Object::Boolean(boolean) => format!("{}", boolean),

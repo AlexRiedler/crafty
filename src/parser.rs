@@ -17,6 +17,7 @@ pub struct Parser<'a> {
 pub enum Statement {
     Expression(Box<Expr>),
     Print(Box<Expr>),
+    Var(Token, Option<Box<Expr>>),
 }
 
 pub enum Expr {
@@ -28,11 +29,12 @@ pub enum Expr {
     StringLiteral(String),
     IntegerLiteral(String),
     FloatLiteral(String),
+    Variable(Token),
 }
 
 pub trait Visitor<T> {
-    fn visit_expr(&self, e: &Expr) -> T;
-    fn visit_statement(&self, s: &Statement) -> T;
+    fn visit_expr(&mut self, e: &Expr) -> T;
+    fn visit_statement(&mut self, s: &Statement) -> T;
 }
 
 impl Parser<'_> {
@@ -41,7 +43,7 @@ impl Parser<'_> {
         let mut statements: Vec<Statement> = Vec::new();
 
         while !self.is_at_end() {
-            statements.push(self.statement()?);
+            statements.push(self.declaration()?);
         }
 
         return Ok(statements);
@@ -65,6 +67,27 @@ impl Parser<'_> {
             Some(token) => Ok(Box::new(Expr::Operator(token.token_type.clone(), token.lexeme.to_string()))),
             None => Err(self.error("Internal Parser Error: No previous token found".to_string())),
         }
+    }
+
+    // DEFER: synchronizaton on ParseError (8.2.2)
+    fn declaration(&mut self) -> Result<Statement, ParseError> {
+        if self.token_match(&[TokenType::Var]) {
+            return self.var_declaration();
+        }
+
+        self.statement()
+    }
+
+    fn var_declaration(&mut self) -> Result<Statement, ParseError> {
+        let name = self.consume(TokenType::Identifier)?; // TODO: error message different
+
+        let mut initializer = None;
+        if self.token_match(&[TokenType::Equal]) {
+            initializer = Some(self.expression()?);
+        }
+
+        self.consume(TokenType::Semicolon)?;
+        Ok(Statement::Var(name, initializer))
     }
 
     fn statement(&mut self) -> Result<Statement, ParseError> {
@@ -174,6 +197,12 @@ impl Parser<'_> {
                 None => return Err(self.error("I DONT KNOW WHAT HAPPENED".to_string()))
             }
         }
+        if self.token_match(&[TokenType::Identifier]) {
+            match &self.previous {
+                Some(token) => return Ok(Box::new(Expr::Variable((**token).clone()))),
+                None => return Err(self.error("I DONT KNOW WHAT HAPPENED".to_string()))
+            }
+        }
 
         if self.token_match(&[TokenType::LeftParen]) {
             let expr = self.expression()?;
@@ -199,10 +228,15 @@ impl Parser<'_> {
         }
     }
 
-    fn consume(&mut self, token_type: TokenType) -> Result<bool, ParseError> {
+    fn consume(&mut self, token_type: TokenType) -> Result<Token, ParseError> {
         if self.check(&token_type) {
+            let result =
+                match self.current {
+                    Some(token) => Ok(token.clone()),
+                    None => Err(self.error(format!("advanced past end on token check"))) // should be unreachable
+                };
             self.advance();
-            Ok(true)
+            result
         } else {
             Err(self.error(format!("expected {:?} after expression", token_type)))
         }

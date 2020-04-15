@@ -11,7 +11,7 @@ use parser::Parser;
 use parser::ParseError;
 
 mod runtime;
-use runtime::ExprEvaluator;
+use runtime::build_interpreter;
 
 mod printer;
 use printer::AstPrinter;
@@ -57,6 +57,7 @@ fn run(source: &String) {
         .into_iter()
         .filter(|tok| tok.token_type != TokenType::Whitespace)
         .filter(|tok| tok.token_type != TokenType::Newline)
+        .inspect(|tok| println!("{:?}", tok))
         .collect();
 
     let mut parser = Parser{
@@ -69,7 +70,7 @@ fn run(source: &String) {
             println!("AST:");
             AstPrinter{}.print(&statements);
             println!("\nEval:");
-            ExprEvaluator{}.interpret(&statements);
+            build_interpreter().interpret(&statements);
         },
         Err(ParseError{message}) => {
             println!("Error parsing: {}", message);
