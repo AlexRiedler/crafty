@@ -26,7 +26,7 @@ pub enum Operator {
 pub struct ExprEvaluator;
 
 impl ExprEvaluator {
-    pub fn evaluate(&self, statements: &Vec<Statement>) {
+    pub fn interpret(&self, statements: &Vec<Statement>) {
         for statement in statements.iter() {
             let result = self.visit_statement(statement);
             match result {

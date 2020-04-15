@@ -69,7 +69,7 @@ fn run(source: &String) {
             println!("AST:");
             AstPrinter{}.print(&statements);
             println!("\nEval:");
-            ExprEvaluator{}.evaluate(&statements);
+            ExprEvaluator{}.interpret(&statements);
         },
         Err(ParseError{message}) => {
             println!("Error parsing: {}", message);
