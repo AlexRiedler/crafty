@@ -37,12 +37,14 @@ pub fn build_interpreter() -> ExprEvaluator {
     ExprEvaluator{
         environment: Environment{
             values: HashMap::new(),
+            enclosing: None,
         }
     }
 }
 
 pub struct Environment {
-    pub values: HashMap<String, Object>
+    pub values: HashMap<String, Object>,
+    pub enclosing: Option<Box<Environment>>,
 }
 
 impl Environment {
@@ -53,7 +55,10 @@ impl Environment {
     pub fn get(&self, name: &String) -> Result<Object, RuntimeError> {
         match self.values.get(name) {
             Some(object) => Ok(object.clone()),
-            None => Err(RuntimeError{message: format!("Undefined variable '{}'.", name)}),
+            None => match &self.enclosing {
+                Some(env) => env.get(name),
+                None => Err(RuntimeError{message: format!("Undefined variable '{}'.", name)}),
+            }
         }
     }
 
@@ -63,7 +68,10 @@ impl Environment {
                 self.values.insert(name, object.clone());
                 Ok(object)
             },
-            None => Err(RuntimeError{message: format!("Undefined variable '{}'.", name)}),
+            None => match self.enclosing.as_mut() {
+                Some(env) => env.assign(name, object),
+                None => Err(RuntimeError{message: format!("Undefined variable '{}'.", name)}),
+            },
         }
     }
 }
