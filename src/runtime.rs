@@ -56,6 +56,16 @@ impl Environment {
             None => Err(RuntimeError{message: format!("Undefined variable '{}'.", name)}),
         }
     }
+
+    pub fn assign(&mut self, name: String, object: Object) -> Result<Object, RuntimeError> {
+        match self.values.get(&name) {
+            Some(_) => {
+                self.values.insert(name, object.clone());
+                Ok(object)
+            },
+            None => Err(RuntimeError{message: format!("Undefined variable '{}'.", name)}),
+        }
+    }
 }
 
 pub struct ExprEvaluator {
@@ -79,6 +89,11 @@ impl ExprEvaluator {
 impl Visitor<Result<Object, RuntimeError>> for ExprEvaluator {
     fn visit_expr(&mut self, e: &Expr) -> Result<Object, RuntimeError> {
         match &*e {
+            Expr::Assign(token, ref expr) => {
+                let result = self.visit_expr(expr)?;
+                self.environment.assign(token.lexeme.to_string(), result.clone())?;
+                Ok(result)
+            },
             Expr::Variable(token) => self.environment.get(&token.lexeme),
             Expr::BoolLiteral(b) => Ok(Object::Boolean(*b)),
             Expr::StringLiteral(n) => Ok(Object::StringLiteral(n.to_string())),

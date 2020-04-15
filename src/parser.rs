@@ -30,6 +30,7 @@ pub enum Expr {
     IntegerLiteral(String),
     FloatLiteral(String),
     Variable(Token),
+    Assign(Token, Box<Expr>),
 }
 
 pub trait Visitor<T> {
@@ -111,7 +112,22 @@ impl Parser<'_> {
     }
 
     fn expression(&mut self) -> Result<Box<Expr>, ParseError> {
-        return self.equality();
+        self.assignment()
+    }
+
+    fn assignment(&mut self) -> Result<Box<Expr>, ParseError> {
+        let expr = self.equality()?;
+
+        if self.token_match(&[TokenType::Equal]) {
+            let value = self.assignment()?;
+
+            match *expr {
+                Expr::Variable(token) => return Ok(Box::new(Expr::Assign(token.clone(), value))),
+                _ => return Err(self.error(format!("Invalid assignment target."))),
+            }
+        }
+
+        Ok(expr)
     }
 
     fn equality(&mut self) -> Result<Box<Expr>, ParseError> {

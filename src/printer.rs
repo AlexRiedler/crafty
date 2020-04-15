@@ -24,6 +24,7 @@ impl Visitor<String> for AstPrinter {
             Expr::Binary(ref lhs, ref operator, ref rhs) => format!("({} {} {})", self.visit_expr(operator), self.visit_expr(lhs), self.visit_expr(rhs)),
             Expr::Grouping(ref expr) => format!("{}", self.visit_expr(expr)),
             Expr::Variable(token) => format!("{}", token.lexeme.to_string()),
+            Expr::Assign(token, ref expr) => format!("{} = {}", token.lexeme.to_string(), self.visit_expr(expr)),
         }
     }
 

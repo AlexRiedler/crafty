@@ -11,3 +11,5 @@ var a = 5;
 print a;
 var b;
 print b;
+b = 6;
+print b;
