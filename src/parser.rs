@@ -31,6 +31,7 @@ pub enum Expr {
     StringLiteral(String),
     IntegerLiteral(String),
     FloatLiteral(String),
+    Logical(Box<Expr>, TokenType, Box<Expr>),
     Variable(Token),
     Assign(Token, Box<Expr>),
 }
@@ -151,7 +152,7 @@ impl Parser<'_> {
     }
 
     fn assignment(&mut self) -> Result<Box<Expr>, ParseError> {
-        let expr = self.equality()?;
+        let expr = self.or()?;
 
         if self.token_match(&[TokenType::Equal]) {
             let value = self.assignment()?;
@@ -160,6 +161,28 @@ impl Parser<'_> {
                 Expr::Variable(token) => return Ok(Box::new(Expr::Assign(token.clone(), value))),
                 _ => return Err(self.error(format!("Invalid assignment target."))),
             }
+        }
+
+        Ok(expr)
+    }
+
+    fn or(&mut self) -> Result<Box<Expr>, ParseError> {
+        let mut expr = self.and()?;
+
+        while self.token_match(&[TokenType::Or]) {
+            let right = self.and()?;
+            expr = Box::new(Expr::Logical(expr, TokenType::Or, right));
+        }
+
+        Ok(expr)
+    }
+
+    fn and(&mut self) -> Result<Box<Expr>, ParseError> {
+        let mut expr = self.equality()?;
+
+        while self.token_match(&[TokenType::And]) {
+            let right = self.equality()?;
+            expr = Box::new(Expr::Logical(expr, TokenType::And, right));
         }
 
         Ok(expr)

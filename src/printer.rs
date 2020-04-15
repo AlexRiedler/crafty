@@ -19,6 +19,7 @@ impl Visitor<String> for AstPrinter {
             Expr::StringLiteral(n) => n.to_string(),
             Expr::IntegerLiteral(n) => n.to_string(),
             Expr::FloatLiteral(n) => n.to_string(),
+            Expr::Logical(ref lhs, token_type, ref rhs) => format!("{} {:?} {}", self.visit_expr(lhs), token_type, self.visit_expr(rhs)),
             Expr::Operator(_token_type, n) => n.to_string(),
             Expr::Unary(ref operator, ref rhs) => format!("({} {})", self.visit_expr(operator), self.visit_expr(rhs)),
             Expr::Binary(ref lhs, ref operator, ref rhs) => format!("({} {} {})", self.visit_expr(operator), self.visit_expr(lhs), self.visit_expr(rhs)),

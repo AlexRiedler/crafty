@@ -137,6 +137,23 @@ impl Visitor<Result<Object, RuntimeError>> for ExprEvaluator {
             Expr::StringLiteral(n) => Ok(Object::StringLiteral(n.to_string())),
             Expr::IntegerLiteral(n) => Ok(Object::Integer(n.parse::<i64>().unwrap())),
             Expr::FloatLiteral(n) => Ok(Object::Float(n.parse::<f64>().unwrap())),
+            Expr::Logical(ref lhs, token_type, ref rhs) => {
+                let left = self.visit_expr(lhs)?;
+                match token_type {
+                    TokenType::Or => {
+                        if is_truthy(&left) {
+                            return Ok(left);
+                        }
+                    },
+                    TokenType::And => {
+                        if !is_truthy(&left) {
+                            return Ok(left);
+                        }
+                    }
+                    _ => return Err(RuntimeError{message: format!("Received unknown logical operator {:?}", token_type)}),
+                }
+                self.visit_expr(rhs)
+            },
             Expr::Operator(token_type, n) => Err(RuntimeError{message: format!("Received operator {:?} {} outside of expression", token_type, n)}),
             Expr::Unary(ref operator, ref rhs) => 
                 match operator_from_expression(operator)? {
@@ -283,7 +300,7 @@ impl Visitor<Result<Object, RuntimeError>> for ExprEvaluator {
         match &*s {
             Statement::Expression(ref expr) => self.visit_expr(expr),
             Statement::If(ref expr, ref then_statement, ref else_branch) => {
-                if is_truthy(self.visit_expr(expr)?) {
+                if is_truthy(&self.visit_expr(expr)?) {
                     self.execute(&then_statement)?;
                 } else {
                     match else_branch {
@@ -326,12 +343,12 @@ fn stringify(obj: &Object) -> String {
     }
 }
 
-fn is_truthy(obj: Object) -> bool {
+fn is_truthy(obj: &Object) -> bool {
     match obj {
         Object::Nil() => false,
-        Object::Float(float) => float != 0.0,
-        Object::Integer(integer) => integer != 0,
-        Object::Boolean(boolean) => boolean,
+        Object::Float(float) => *float != 0.0,
+        Object::Integer(integer) => *integer != 0,
+        Object::Boolean(boolean) => *boolean == true,
         Object::StringLiteral(_string) => true,
     }
 }
