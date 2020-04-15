@@ -16,6 +16,7 @@ pub struct Parser<'a> {
 
 pub enum Statement {
     Expression(Box<Expr>),
+    If(Box<Expr>, Box<Statement>, Option<Box<Statement>>),
     Print(Box<Expr>),
     Var(Token, Option<Box<Expr>>),
     Block(Vec<Statement>),
@@ -93,6 +94,9 @@ impl Parser<'_> {
     }
 
     fn statement(&mut self) -> Result<Statement, ParseError> {
+        if self.token_match(&[TokenType::If]) {
+            return self.if_statement();
+        }
         if self.token_match(&[TokenType::Print]) {
             return self.print_statement();
         }
@@ -101,6 +105,22 @@ impl Parser<'_> {
         }
 
         return self.expression_statement();
+    }
+
+    fn if_statement(&mut self) -> Result<Statement, ParseError> {
+        self.consume(TokenType::LeftParen)?;
+        let condition = self.expression()?;
+        self.consume(TokenType::RightParen)?;
+
+        let then_branch = Box::new(self.statement()?);
+        let else_branch =
+            if self.token_match(&[TokenType::Else]) {
+                Some(Box::new(self.statement()?))
+            } else {
+                None
+            };
+
+        Ok(Statement::If(condition, then_branch, else_branch))
     }
 
     fn block(&mut self) -> Result<Vec<Statement>, ParseError> {

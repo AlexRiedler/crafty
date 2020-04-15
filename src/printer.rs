@@ -31,6 +31,10 @@ impl Visitor<String> for AstPrinter {
     fn visit_statement(&mut self, s: &Statement) -> String {
         match &*s {
             Statement::Expression(ref expr) => self.visit_expr(expr),
+            Statement::If(ref expr, ref then_statement, ref else_branch) => match else_branch {
+                Some(else_statement) => format!("if {} then {} else {}", self.visit_expr(expr), self.visit_statement(then_statement), self.visit_statement(else_statement)),
+                None => format!("if {} then {}", self.visit_expr(expr), self.visit_statement(then_statement)),
+            },
             Statement::Print(ref expr) => format!("print {}", self.visit_expr(expr)),
             Statement::Var(token, initializer) => {
                 match initializer {

@@ -282,6 +282,17 @@ impl Visitor<Result<Object, RuntimeError>> for ExprEvaluator {
     fn visit_statement(&mut self, s: &Statement) -> Result<Object, RuntimeError> {
         match &*s {
             Statement::Expression(ref expr) => self.visit_expr(expr),
+            Statement::If(ref expr, ref then_statement, ref else_branch) => {
+                if is_truthy(self.visit_expr(expr)?) {
+                    self.execute(&then_statement)?;
+                } else {
+                    match else_branch {
+                        Some(ref else_statement) => self.execute(&else_statement)?,
+                        None => Object::Nil(),
+                    };
+                }
+                Ok(Object::Nil())
+            },
             Statement::Print(ref expr) => {
                 let result = self.visit_expr(expr)?;
                 println!("{}", stringify(&result));
@@ -312,6 +323,16 @@ fn stringify(obj: &Object) -> String {
         Object::Integer(integer) => format!("{}", integer),
         Object::Boolean(boolean) => format!("{}", boolean),
         Object::StringLiteral(string) => format!("{}", string),
+    }
+}
+
+fn is_truthy(obj: Object) -> bool {
+    match obj {
+        Object::Nil() => false,
+        Object::Float(float) => float != 0.0,
+        Object::Integer(integer) => integer != 0,
+        Object::Boolean(boolean) => boolean,
+        Object::StringLiteral(_string) => true,
     }
 }
 
