@@ -23,6 +23,14 @@ pub enum Operator {
     Multiply
 }
 
+#[derive(Debug)]
+pub enum Object {
+    Float(f64),
+    Integer(i64),
+    Boolean(bool),
+    StringLiteral(String),
+}
+
 pub struct ExprEvaluator;
 
 impl ExprEvaluator {
@@ -30,7 +38,7 @@ impl ExprEvaluator {
         for statement in statements.iter() {
             let result = self.visit_statement(statement);
             match result {
-                Ok(_number) => {},
+                Ok(_object) => {},
                 Err(RuntimeError{message}) => {
                     println!("Error evaluating: {}", message);
                 }
@@ -39,51 +47,174 @@ impl ExprEvaluator {
     }
 }
 
-impl Visitor<Result<f64, RuntimeError>> for ExprEvaluator {
-    fn visit_expr(&self, e: &Expr) -> Result<f64, RuntimeError> {
+impl Visitor<Result<Object, RuntimeError>> for ExprEvaluator {
+    fn visit_expr(&self, e: &Expr) -> Result<Object, RuntimeError> {
         match &*e {
-            Expr::BoolLiteral(b) => Ok(bool_to_f64(*b)),
-            Expr::StringLiteral(n) => Err(RuntimeError{message: format!("Found unexpected string literal {}", n)}),
-            Expr::NumberLiteral(n) => Ok(n.parse::<f64>().unwrap()),
+            Expr::BoolLiteral(b) => Ok(Object::Boolean(*b)),
+            Expr::StringLiteral(n) => Ok(Object::StringLiteral(n.to_string())),
+            Expr::IntegerLiteral(n) => Ok(Object::Integer(n.parse::<i64>().unwrap())),
+            Expr::FloatLiteral(n) => Ok(Object::Float(n.parse::<f64>().unwrap())),
             Expr::Operator(token_type, n) => Err(RuntimeError{message: format!("Received operator {:?} {} outside of expression", token_type, n)}),
             Expr::Unary(ref operator, ref rhs) => 
                 match operator_from_expression(operator)? {
-                    Operator::Bang => Ok(self.visit_expr(rhs)?),
-                    Operator::Subtract => Ok(-self.visit_expr(rhs)?),
+                    Operator::Bang => {
+                        let result = self.visit_expr(rhs)?;
+                        match result {
+                            Object::Boolean(b) => Ok(Object::Boolean(!b)),
+                            _ => Err(RuntimeError{message: format!("Bang operator received non-boolean expression: {:?}", result)}),
+                        }
+                    },
+                    Operator::Subtract => {
+                        let result = self.visit_expr(rhs)?;
+                        match result {
+                            Object::Float(float) => Ok(Object::Float(-float)),
+                            Object::Integer(integer) => Ok(Object::Integer(-integer)),
+                            _ => Err(RuntimeError{message: format!("Unary subtract operator received non-number expression: {:?}", result)}),
+                        }
+                    },
                     op => Err(RuntimeError{message: format!("Invalid unary opeartor {:?}", op)}),
                 },
             Expr::Binary(ref lhs, ref operator, ref rhs) =>
                 match operator_from_expression(operator)? {
-                    Operator::BangEqual => Ok(bool_to_f64(self.visit_expr(lhs)? != self.visit_expr(rhs)?)),
-                    Operator::EqualEqual => Ok(bool_to_f64(self.visit_expr(lhs)? != self.visit_expr(rhs)?)),
-                    Operator::Greater => Ok(bool_to_f64(self.visit_expr(lhs)? > self.visit_expr(rhs)?)),
-                    Operator::GreaterEqual => Ok(bool_to_f64(self.visit_expr(lhs)? >= self.visit_expr(rhs)?)),
-                    Operator::Less => Ok(bool_to_f64(self.visit_expr(lhs)? < self.visit_expr(rhs)?)),
-                    Operator::LessEqual => Ok(bool_to_f64(self.visit_expr(lhs)? <= self.visit_expr(rhs)?)),
-                    Operator::Add => Ok(self.visit_expr(lhs)? + self.visit_expr(rhs)?),
-                    Operator::Subtract => Ok(self.visit_expr(lhs)? - self.visit_expr(rhs)?),
-                    Operator::Multiply => Ok(self.visit_expr(lhs)? * self.visit_expr(rhs)?),
-                    Operator::Divide => Ok(self.visit_expr(lhs)? / self.visit_expr(rhs)?),
+                    Operator::BangEqual => {
+                        let lhs_value = self.visit_expr(lhs)?;
+                        let rhs_value = self.visit_expr(rhs)?;
+                        match (lhs_value, rhs_value) {
+                            (Object::Float(lval), Object::Float(rval)) => Ok(Object::Boolean(lval != rval)),
+                            (Object::Integer(lval), Object::Integer(rval)) => Ok(Object::Boolean(lval != rval)),
+                            (Object::Integer(lval), Object::Float(rval)) => Ok(Object::Boolean(lval as f64 != rval)),
+                            (Object::Float(lval), Object::Integer(rval)) => Ok(Object::Boolean(lval != rval as f64)),
+                            (Object::Boolean(lval), Object::Boolean(rval)) => Ok(Object::Boolean(lval != rval)),
+                            (Object::StringLiteral(lval), Object::StringLiteral(rval)) => Ok(Object::Boolean(lval != rval)),
+                            (lval, rval) => Err(RuntimeError{message: format!("lhs is {:?} rhs is {:?} cannot compare using !=", lval, rval)}),
+                        }
+                    },
+                    Operator::EqualEqual => {
+                        let lhs_value = self.visit_expr(lhs)?;
+                        let rhs_value = self.visit_expr(rhs)?;
+                        match (lhs_value, rhs_value) {
+                            (Object::Float(lval), Object::Float(rval)) => Ok(Object::Boolean(lval == rval)),
+                            (Object::Integer(lval), Object::Integer(rval)) => Ok(Object::Boolean(lval == rval)),
+                            (Object::Integer(lval), Object::Float(rval)) => Ok(Object::Boolean(lval as f64 == rval)),
+                            (Object::Float(lval), Object::Integer(rval)) => Ok(Object::Boolean(lval == rval as f64)),
+                            (Object::Boolean(lval), Object::Boolean(rval)) => Ok(Object::Boolean(lval == rval)),
+                            (Object::StringLiteral(lval), Object::StringLiteral(rval)) => Ok(Object::Boolean(lval == rval)),
+                            (lval, rval) => Err(RuntimeError{message: format!("lhs is {:?} rhs is {:?} cannot compare using ==", lval, rval)}),
+                        }
+                    },
+                    Operator::Greater => {
+                        let lhs_value = self.visit_expr(lhs)?;
+                        let rhs_value = self.visit_expr(rhs)?;
+                        match (lhs_value, rhs_value) {
+                            (Object::Float(lval), Object::Float(rval)) => Ok(Object::Boolean(lval > rval)),
+                            (Object::Integer(lval), Object::Integer(rval)) => Ok(Object::Boolean(lval > rval)),
+                            (Object::Integer(lval), Object::Float(rval)) => Ok(Object::Boolean(lval as f64 > rval)),
+                            (Object::Float(lval), Object::Integer(rval)) => Ok(Object::Boolean(lval > rval as f64)),
+                            (lval, rval) => Err(RuntimeError{message: format!("lhs is {:?} rhs is {:?} cannot compare using >", lval, rval)}),
+                        }
+                    },
+                    Operator::GreaterEqual => {
+                        let lhs_value = self.visit_expr(lhs)?;
+                        let rhs_value = self.visit_expr(rhs)?;
+                        match (lhs_value, rhs_value) {
+                            (Object::Float(lval), Object::Float(rval)) => Ok(Object::Boolean(lval >= rval)),
+                            (Object::Integer(lval), Object::Integer(rval)) => Ok(Object::Boolean(lval >= rval)),
+                            (Object::Integer(lval), Object::Float(rval)) => Ok(Object::Boolean(lval as f64 >= rval)),
+                            (Object::Float(lval), Object::Integer(rval)) => Ok(Object::Boolean(lval >= rval as f64)),
+                            (lval, rval) => Err(RuntimeError{message: format!("lhs is {:?} rhs is {:?} cannot compare using >=", lval, rval)}),
+                        }
+                    },
+                    Operator::Less => {
+                        let lhs_value = self.visit_expr(lhs)?;
+                        let rhs_value = self.visit_expr(rhs)?;
+                        match (lhs_value, rhs_value) {
+                            (Object::Float(lval), Object::Float(rval)) => Ok(Object::Boolean(lval < rval)),
+                            (Object::Integer(lval), Object::Integer(rval)) => Ok(Object::Boolean(lval < rval)),
+                            (Object::Integer(lval), Object::Float(rval)) => Ok(Object::Boolean((lval as f64) < rval)),
+                            (Object::Float(lval), Object::Integer(rval)) => Ok(Object::Boolean(lval < (rval as f64))),
+                            (lval, rval) => Err(RuntimeError{message: format!("lhs is {:?} rhs is {:?} cannot compare using <", lval, rval)}),
+                        }
+                    },
+                    Operator::LessEqual => {
+                        let lhs_value = self.visit_expr(lhs)?;
+                        let rhs_value = self.visit_expr(rhs)?;
+                        match (lhs_value, rhs_value) {
+                            (Object::Float(lval), Object::Float(rval)) => Ok(Object::Boolean(lval <= rval)),
+                            (Object::Integer(lval), Object::Integer(rval)) => Ok(Object::Boolean(lval <= rval)),
+                            (Object::Integer(lval), Object::Float(rval)) => Ok(Object::Boolean((lval as f64) <= rval)),
+                            (Object::Float(lval), Object::Integer(rval)) => Ok(Object::Boolean(lval <= (rval as f64))),
+                            (lval, rval) => Err(RuntimeError{message: format!("lhs is {:?} rhs is {:?} cannot compare using <=", lval, rval)}),
+                        }
+                    },
+                    Operator::Add => {
+                        let lhs_value = self.visit_expr(lhs)?;
+                        let rhs_value = self.visit_expr(rhs)?;
+                        match (lhs_value, rhs_value) {
+                            (Object::Float(lval), Object::Float(rval)) => Ok(Object::Float(lval + rval)),
+                            (Object::Integer(lval), Object::Integer(rval)) => Ok(Object::Integer(lval + rval)),
+                            (Object::Integer(lval), Object::Float(rval)) => Ok(Object::Float((lval as f64) + rval)),
+                            (Object::Float(lval), Object::Integer(rval)) => Ok(Object::Float(lval + (rval as f64))),
+                            (lval, rval) => Err(RuntimeError{message: format!("lhs is {:?} rhs is {:?} cannot add", lval, rval)}),
+                        }
+                    },
+                    Operator::Subtract => {
+                        let lhs_value = self.visit_expr(lhs)?;
+                        let rhs_value = self.visit_expr(rhs)?;
+                        match (lhs_value, rhs_value) {
+                            (Object::Float(lval), Object::Float(rval)) => Ok(Object::Float(lval - rval)),
+                            (Object::Integer(lval), Object::Integer(rval)) => Ok(Object::Integer(lval - rval)),
+                            (Object::Integer(lval), Object::Float(rval)) => Ok(Object::Float((lval as f64) - rval)),
+                            (Object::Float(lval), Object::Integer(rval)) => Ok(Object::Float(lval - (rval as f64))),
+                            (lval, rval) => Err(RuntimeError{message: format!("lhs is {:?} rhs is {:?} cannot subtract", lval, rval)}),
+                        }
+                    },
+                    Operator::Multiply => {
+                        let lhs_value = self.visit_expr(lhs)?;
+                        let rhs_value = self.visit_expr(rhs)?;
+                        match (lhs_value, rhs_value) {
+                            (Object::Float(lval), Object::Float(rval)) => Ok(Object::Float(lval * rval)),
+                            (Object::Integer(lval), Object::Integer(rval)) => Ok(Object::Integer(lval * rval)),
+                            (Object::Integer(lval), Object::Float(rval)) => Ok(Object::Float((lval as f64) * rval)),
+                            (Object::Float(lval), Object::Integer(rval)) => Ok(Object::Float(lval * (rval as f64))),
+                            (lval, rval) => Err(RuntimeError{message: format!("lhs is {:?} rhs is {:?} cannot multiply", lval, rval)}),
+                        }
+                    },
+                    Operator::Divide => {
+                        let lhs_value = self.visit_expr(lhs)?;
+                        let rhs_value = self.visit_expr(rhs)?;
+                        match (lhs_value, rhs_value) {
+                            (Object::Float(lval), Object::Float(rval)) => Ok(Object::Float(lval / rval)),
+                            (Object::Integer(lval), Object::Integer(rval)) => Ok(Object::Float((lval as f64) / (rval as f64))), // DEFER: determine if this should be integer division
+                            (Object::Integer(lval), Object::Float(rval)) => Ok(Object::Float((lval as f64) / rval)),
+                            (Object::Float(lval), Object::Integer(rval)) => Ok(Object::Float(lval / (rval as f64))),
+                            (lval, rval) => Err(RuntimeError{message: format!("lhs is {:?} rhs is {:?} cannot divide", lval, rval)}),
+                        }
+                    },
                     op => Err(RuntimeError{message: format!("Invalid inline opeartor {:?}", op)}),
                 },
             Expr::Grouping(ref expr) => self.visit_expr(expr),
         }
     }
 
-    fn visit_statement(&self, s: &Statement) -> Result<f64, RuntimeError> {
+    fn visit_statement(&self, s: &Statement) -> Result<Object, RuntimeError> {
         match &*s {
             Statement::Expression(ref expr) => self.visit_expr(expr),
             Statement::Print(ref expr) => {
-                let number = self.visit_expr(expr)?;
-                println!("{}", number);
-                Ok(number)
+                let result = self.visit_expr(expr)?;
+                println!("{}", stringify(&result));
+                Ok(result)
             }
         }
     }
 }
 
-fn bool_to_f64(boolean: bool) -> f64 {
-    if boolean { 1.0 } else { 0.0 }
+fn stringify(obj: &Object) -> String {
+    match obj {
+        Object::Float(float) => format!("{}", float),
+        Object::Integer(integer) => format!("{}", integer),
+        Object::Boolean(boolean) => format!("{}", boolean),
+        Object::StringLiteral(string) => format!("{}", string),
+    }
 }
 
 // DEFER: this should probably be part of parsing?

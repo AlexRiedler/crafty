@@ -17,7 +17,8 @@ impl Visitor<String> for AstPrinter {
         match &*e {
             Expr::BoolLiteral(b) => format!("{}", b),
             Expr::StringLiteral(n) => n.to_string(),
-            Expr::NumberLiteral(n) => n.to_string(),
+            Expr::IntegerLiteral(n) => n.to_string(),
+            Expr::FloatLiteral(n) => n.to_string(),
             Expr::Operator(_token_type, n) => n.to_string(),
             Expr::Unary(ref operator, ref rhs) => format!("({} {})", self.visit_expr(operator), self.visit_expr(rhs)),
             Expr::Binary(ref lhs, ref operator, ref rhs) => format!("({} {} {})", self.visit_expr(operator), self.visit_expr(lhs), self.visit_expr(rhs)),

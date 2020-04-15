@@ -81,8 +81,7 @@ impl Scanner<'_> {
                     TokenType::Str
                 }
                 _ => if ch.is_digit(10) {
-                    self.consume_number();
-                    TokenType::Number
+                    self.consume_number()
                 } else if ch.is_alphabetic() {
                     self.consume_identifier();
                     self.identifier_token_type()
@@ -121,7 +120,7 @@ impl Scanner<'_> {
         self.advance();
     }
 
-    fn consume_number(&mut self) {
+    fn consume_number(&mut self) -> TokenType {
         while let Some(ch) = self.src_iter.peek() {
             if !ch.is_digit(10) {
                 break;
@@ -129,9 +128,10 @@ impl Scanner<'_> {
             self.advance();
         }
 
+        // TODO: I don't think we properly handle 45.function()
         match self.src_iter.peek() {
             Some(&'.') => self.advance(),
-            _ => return,
+            _ => return TokenType::Integer,
         };
 
         while let Some(ch) = self.src_iter.peek() {
@@ -140,6 +140,7 @@ impl Scanner<'_> {
             }
             self.advance();
         }
+        TokenType::Float
     }
 
     fn consume_identifier(&mut self) {

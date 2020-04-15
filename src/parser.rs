@@ -26,7 +26,8 @@ pub enum Expr {
     Operator(TokenType, String),
     BoolLiteral(bool),
     StringLiteral(String),
-    NumberLiteral(String),
+    IntegerLiteral(String),
+    FloatLiteral(String),
 }
 
 pub trait Visitor<T> {
@@ -155,9 +156,15 @@ impl Parser<'_> {
         if self.token_match(&[TokenType::True]) {
             return Ok(Box::new(Expr::BoolLiteral(true)));
         }
-        if self.token_match(&[TokenType::Number]) {
+        if self.token_match(&[TokenType::Integer]) {
             match &self.previous {
-                Some(token) => return Ok(Box::new(Expr::NumberLiteral(token.lexeme.to_string()))),
+                Some(token) => return Ok(Box::new(Expr::IntegerLiteral(token.lexeme.to_string()))),
+                None => return Err(self.error("I DONT KNOW WHAT HAPPENED".to_string()))
+            }
+        }
+        if self.token_match(&[TokenType::Float]) {
+            match &self.previous {
+                Some(token) => return Ok(Box::new(Expr::FloatLiteral(token.lexeme.to_string()))),
                 None => return Err(self.error("I DONT KNOW WHAT HAPPENED".to_string()))
             }
         }
