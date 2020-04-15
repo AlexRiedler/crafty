@@ -34,50 +34,25 @@ pub enum Object {
 }
 
 pub fn build_interpreter() -> ExprEvaluator {
+    let mut environments = Vec::new();
+    environments.push(Environment{
+        values: HashMap::new()
+    });
+
     ExprEvaluator{
-        environment: Environment{
-            values: HashMap::new(),
-            enclosing: None,
-        }
+        environments
     }
 }
 
 pub struct Environment {
     pub values: HashMap<String, Object>,
-    pub enclosing: Option<Box<Environment>>,
 }
 
 impl Environment {
-    pub fn define(&mut self, name: String, object: Object) {
-        self.values.insert(name, object);
-    }
-
-    pub fn get(&self, name: &String) -> Result<Object, RuntimeError> {
-        match self.values.get(name) {
-            Some(object) => Ok(object.clone()),
-            None => match &self.enclosing {
-                Some(env) => env.get(name),
-                None => Err(RuntimeError{message: format!("Undefined variable '{}'.", name)}),
-            }
-        }
-    }
-
-    pub fn assign(&mut self, name: String, object: Object) -> Result<Object, RuntimeError> {
-        match self.values.get(&name) {
-            Some(_) => {
-                self.values.insert(name, object.clone());
-                Ok(object)
-            },
-            None => match self.enclosing.as_mut() {
-                Some(env) => env.assign(name, object),
-                None => Err(RuntimeError{message: format!("Undefined variable '{}'.", name)}),
-            },
-        }
-    }
 }
 
 pub struct ExprEvaluator {
-    environment: Environment,
+    environments: Vec<Environment>,
 }
 
 impl ExprEvaluator {
@@ -92,6 +67,61 @@ impl ExprEvaluator {
             }
         }
     }
+
+    fn execute_block(&mut self, statements: &Vec<Statement>) -> Result<Object, RuntimeError> {
+        self.environments.push(Environment{
+            values: HashMap::new()
+        });
+
+        let mut last_value = Object::Nil();
+
+        for statement in statements.iter() {
+            match self.execute(statement) {
+                Ok(object) => last_value = object,
+                error => {
+                    self.environments.pop();
+                    return error;
+                }
+            }
+        }
+
+        self.environments.pop();
+        Ok(last_value)
+    }
+
+    fn execute(&mut self, statement: &Statement) -> Result<Object, RuntimeError> {
+        self.visit_statement(statement)
+    }
+
+    pub fn define_variable(&mut self, name: String, object: Object) {
+        match self.environments.last_mut() {
+            Some(environment) => environment.values.insert(name, object),
+            None => None // TODO: probably should error out, no environments present
+        };
+    }
+
+    pub fn get_variable(&self, name: &String) -> Result<Object, RuntimeError> {
+        for environment in self.environments.iter().rev() {
+            match environment.values.get(name) {
+                Some(object) => return Ok(object.clone()),
+                None => {}
+            }
+        }
+        return Err(RuntimeError{message: format!("Undefined variable '{}'.", name)});
+    }
+
+    pub fn assign_variable(&mut self, name: String, object: Object) -> Result<Object, RuntimeError> {
+        for environment in self.environments.iter_mut().rev() {
+            match environment.values.get(&name) {
+                Some(_) => {
+                    environment.values.insert(name, object.clone());
+                    return Ok(object);
+                },
+                None => {}
+            }
+        }
+        return Err(RuntimeError{message: format!("Undefined variable '{}'.", name)});
+    }
 }
 
 impl Visitor<Result<Object, RuntimeError>> for ExprEvaluator {
@@ -99,10 +129,10 @@ impl Visitor<Result<Object, RuntimeError>> for ExprEvaluator {
         match &*e {
             Expr::Assign(token, ref expr) => {
                 let result = self.visit_expr(expr)?;
-                self.environment.assign(token.lexeme.to_string(), result.clone())?;
+                self.assign_variable(token.lexeme.to_string(), result.clone())?;
                 Ok(result)
             },
-            Expr::Variable(token) => self.environment.get(&token.lexeme),
+            Expr::Variable(token) => self.get_variable(&token.lexeme),
             Expr::BoolLiteral(b) => Ok(Object::Boolean(*b)),
             Expr::StringLiteral(n) => Ok(Object::StringLiteral(n.to_string())),
             Expr::IntegerLiteral(n) => Ok(Object::Integer(n.parse::<i64>().unwrap())),
@@ -264,7 +294,11 @@ impl Visitor<Result<Object, RuntimeError>> for ExprEvaluator {
                         None => Object::Nil()
                     };
 
-                self.environment.define(token.lexeme.to_string(), value);
+                self.define_variable(token.lexeme.to_string(), value);
+                Ok(Object::Nil())
+            },
+            Statement::Block(statements) => {
+                self.execute_block(statements)?;
                 Ok(Object::Nil())
             }
         }

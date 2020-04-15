@@ -18,6 +18,7 @@ pub enum Statement {
     Expression(Box<Expr>),
     Print(Box<Expr>),
     Var(Token, Option<Box<Expr>>),
+    Block(Vec<Statement>),
 }
 
 pub enum Expr {
@@ -95,8 +96,22 @@ impl Parser<'_> {
         if self.token_match(&[TokenType::Print]) {
             return self.print_statement();
         }
+        if self.token_match(&[TokenType::LeftBrace]) {
+            return Ok(Statement::Block(self.block()?));
+        }
 
         return self.expression_statement();
+    }
+
+    fn block(&mut self) -> Result<Vec<Statement>, ParseError> {
+        let mut statements = Vec::new();
+
+        while !self.check(&TokenType::RightBrace) && !self.is_at_end() {
+            statements.push(self.declaration()?);
+        }
+
+        self.consume(TokenType::RightBrace)?; // TODO: handle error message: Expect '}' after block."
+        Ok(statements)
     }
 
     fn print_statement(&mut self) -> Result<Statement, ParseError> {

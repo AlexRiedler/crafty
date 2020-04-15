@@ -13,3 +13,13 @@ var b;
 print b;
 b = 6;
 print b;
+
+var foo = 1;
+print foo;
+{
+  var foo = 2;
+  print foo;
+  foo = 3;
+  print foo;
+}
+print foo;

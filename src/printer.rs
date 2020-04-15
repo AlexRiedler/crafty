@@ -37,6 +37,12 @@ impl Visitor<String> for AstPrinter {
                     Some(expr) => format!("var {} = {}", token.lexeme.to_string(), self.visit_expr(expr)),
                     None => format!("var {};", token.lexeme.to_string()),
                 }
+            },
+            Statement::Block(statements) => {
+                statements.iter()
+                    .map(|statement| self.visit_statement(statement))
+                    .collect::<Vec<String>>()
+                    .join("\n")
             }
         }
     }
