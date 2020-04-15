@@ -56,7 +56,7 @@ fn run(source: &String) {
         scanner::scan_tokens(source)
         .into_iter()
         .filter(|tok| tok.token_type != TokenType::Whitespace)
-        .inspect(|tok| println!("{:?}", tok))
+        .filter(|tok| tok.token_type != TokenType::Newline)
         .collect();
 
     let mut parser = Parser{
@@ -65,9 +65,11 @@ fn run(source: &String) {
         previous: None,
     };
     match parser.parse() {
-        Ok(expr) => {
-            AstPrinter{}.print(&expr);
-            ExprEvaluator{}.evaluate(&expr);
+        Ok(statements) => {
+            println!("AST:");
+            AstPrinter{}.print(&statements);
+            println!("\nEval:");
+            ExprEvaluator{}.evaluate(&statements);
         },
         Err(ParseError{message}) => {
             println!("Error parsing: {}", message);

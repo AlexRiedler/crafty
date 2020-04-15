@@ -14,6 +14,11 @@ pub struct Parser<'a> {
     pub previous: Option<&'a Token>,
 }
 
+pub enum Statement {
+    Expression(Box<Expr>),
+    Print(Box<Expr>),
+}
+
 pub enum Expr {
     Grouping(Box<Expr>),
     Binary(Box<Expr>, Box<Expr>, Box<Expr>),
@@ -26,12 +31,26 @@ pub enum Expr {
 
 pub trait Visitor<T> {
     fn visit_expr(&self, e: &Expr) -> T;
+    fn visit_statement(&self, s: &Statement) -> T;
 }
 
 impl Parser<'_> {
-    pub fn parse(&mut self) -> Result<Box<Expr>, ParseError> {
+    pub fn parse(&mut self) -> Result<Vec<Statement>, ParseError> {
         self.advance();
-        self.expression()
+        let mut statements: Vec<Statement> = Vec::new();
+
+        while !self.is_at_end() {
+            statements.push(self.statement()?);
+        }
+
+        return Ok(statements);
+    }
+
+    fn is_at_end(&mut self) -> bool {
+        match self.current {
+            Some(token) => token.token_type == TokenType::Eof,
+            None => true
+        }
     }
 
     fn advance(&mut self) -> Option<&'_ Token> {
@@ -47,7 +66,27 @@ impl Parser<'_> {
         }
     }
 
-    pub fn expression(&mut self) -> Result<Box<Expr>, ParseError> {
+    fn statement(&mut self) -> Result<Statement, ParseError> {
+        if self.token_match(&[TokenType::Print]) {
+            return self.print_statement();
+        }
+
+        return self.expression_statement();
+    }
+
+    fn print_statement(&mut self) -> Result<Statement, ParseError> {
+        let value = self.expression()?;
+        self.consume(TokenType::Semicolon)?;
+        Ok(Statement::Print(value))
+    }
+
+    fn expression_statement(&mut self) -> Result<Statement, ParseError> {
+        let value = self.expression()?;
+        self.consume(TokenType::Semicolon)?;
+        Ok(Statement::Expression(value))
+    }
+
+    fn expression(&mut self) -> Result<Box<Expr>, ParseError> {
         return self.equality();
     }
 

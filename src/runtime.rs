@@ -1,4 +1,5 @@
 use crate::parser::Expr;
+use crate::parser::Statement;
 use crate::parser::Visitor;
 use crate::scanner::token::TokenType;
 
@@ -25,14 +26,14 @@ pub enum Operator {
 pub struct ExprEvaluator;
 
 impl ExprEvaluator {
-    pub fn evaluate(&self, e: &Expr) {
-        let result = self.visit_expr(e);
-        match result {
-            Ok(number) => {
-                println!("{}", number);
-            }
-            Err(RuntimeError{message}) => {
-                println!("Error evaluating: {}", message);
+    pub fn evaluate(&self, statements: &Vec<Statement>) {
+        for statement in statements.iter() {
+            let result = self.visit_statement(statement);
+            match result {
+                Ok(_number) => {},
+                Err(RuntimeError{message}) => {
+                    println!("Error evaluating: {}", message);
+                }
             }
         }
     }
@@ -66,6 +67,17 @@ impl Visitor<Result<f64, RuntimeError>> for ExprEvaluator {
                     op => Err(RuntimeError{message: format!("Invalid inline opeartor {:?}", op)}),
                 },
             Expr::Grouping(ref expr) => self.visit_expr(expr),
+        }
+    }
+
+    fn visit_statement(&self, s: &Statement) -> Result<f64, RuntimeError> {
+        match &*s {
+            Statement::Expression(ref expr) => self.visit_expr(expr),
+            Statement::Print(ref expr) => {
+                let number = self.visit_expr(expr)?;
+                println!("{}", number);
+                Ok(number)
+            }
         }
     }
 }
