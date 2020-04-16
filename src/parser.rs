@@ -19,6 +19,7 @@ pub enum Statement {
     If(Box<Expr>, Box<Statement>, Option<Box<Statement>>),
     Print(Box<Expr>),
     Var(Token, Option<Box<Expr>>),
+    While(Box<Expr>, Box<Statement>),
     Block(Vec<Statement>),
 }
 
@@ -101,6 +102,9 @@ impl Parser<'_> {
         if self.token_match(&[TokenType::Print]) {
             return self.print_statement();
         }
+        if self.token_match(&[TokenType::While]) {
+            return self.while_statement();
+        }
         if self.token_match(&[TokenType::LeftBrace]) {
             return Ok(Statement::Block(self.block()?));
         }
@@ -122,6 +126,16 @@ impl Parser<'_> {
             };
 
         Ok(Statement::If(condition, then_branch, else_branch))
+    }
+
+    fn while_statement(&mut self) -> Result<Statement, ParseError> {
+        self.consume(TokenType::LeftParen)?;
+        let condition = self.expression()?;
+        self.consume(TokenType::RightParen)?;
+
+        let body = self.statement()?;
+
+        Ok(Statement::While(condition, Box::new(body)))
     }
 
     fn block(&mut self) -> Result<Vec<Statement>, ParseError> {

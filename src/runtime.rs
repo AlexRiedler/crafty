@@ -93,6 +93,10 @@ impl ExprEvaluator {
         self.visit_statement(statement)
     }
 
+    fn evaluate(&mut self, expr: &Expr) -> Result<Object, RuntimeError> {
+        self.visit_expr(expr)
+    }
+
     pub fn define_variable(&mut self, name: String, object: Object) {
         match self.environments.last_mut() {
             Some(environment) => environment.values.insert(name, object),
@@ -138,7 +142,7 @@ impl Visitor<Result<Object, RuntimeError>> for ExprEvaluator {
             Expr::IntegerLiteral(n) => Ok(Object::Integer(n.parse::<i64>().unwrap())),
             Expr::FloatLiteral(n) => Ok(Object::Float(n.parse::<f64>().unwrap())),
             Expr::Logical(ref lhs, token_type, ref rhs) => {
-                let left = self.visit_expr(lhs)?;
+                let left = self.evaluate(lhs)?;
                 match token_type {
                     TokenType::Or => {
                         if is_truthy(&left) {
@@ -152,7 +156,7 @@ impl Visitor<Result<Object, RuntimeError>> for ExprEvaluator {
                     }
                     _ => return Err(RuntimeError{message: format!("Received unknown logical operator {:?}", token_type)}),
                 }
-                self.visit_expr(rhs)
+                self.evaluate(rhs)
             },
             Expr::Operator(token_type, n) => Err(RuntimeError{message: format!("Received operator {:?} {} outside of expression", token_type, n)}),
             Expr::Unary(ref operator, ref rhs) => 
@@ -314,6 +318,12 @@ impl Visitor<Result<Object, RuntimeError>> for ExprEvaluator {
                 let result = self.visit_expr(expr)?;
                 println!("{}", stringify(&result));
                 Ok(result)
+            },
+            Statement::While(ref condition, ref body) => {
+                while is_truthy(&self.evaluate(condition)?) {
+                    self.execute(body)?;
+                }
+                Ok(Object::Nil())
             },
             Statement::Var(token, initializer) => {
                 let value =

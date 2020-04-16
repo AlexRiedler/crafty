@@ -37,6 +37,7 @@ impl Visitor<String> for AstPrinter {
                 None => format!("if {} then {}", self.visit_expr(expr), self.visit_statement(then_statement)),
             },
             Statement::Print(ref expr) => format!("print {}", self.visit_expr(expr)),
+            Statement::While(ref condition, ref body) => format!("while {} {}", self.visit_expr(condition), self.visit_statement(body)),
             Statement::Var(token, initializer) => {
                 match initializer {
                     Some(expr) => format!("var {} = {}", token.lexeme.to_string(), self.visit_expr(expr)),
