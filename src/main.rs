@@ -68,7 +68,7 @@ fn run(source: &String) {
     match parser.parse() {
         Ok(statements) => {
             println!("AST:");
-            AstPrinter{}.print(&statements);
+            AstPrinter{indent: 0}.print(&statements);
             println!("\nEval:");
             build_interpreter().interpret(&statements);
         },

@@ -96,6 +96,9 @@ impl Parser<'_> {
     }
 
     fn statement(&mut self) -> Result<Statement, ParseError> {
+        if self.token_match(&[TokenType::For]) {
+            return self.for_statement();
+        }
         if self.token_match(&[TokenType::If]) {
             return self.if_statement();
         }
@@ -110,6 +113,63 @@ impl Parser<'_> {
         }
 
         return self.expression_statement();
+    }
+
+    fn for_statement(&mut self) -> Result<Statement, ParseError> {
+        // Desugared while loop
+        self.consume(TokenType::LeftParen)?;
+
+        let initializer =
+            if self.token_match(&[TokenType::Semicolon]) {
+                None
+            } else if self.token_match(&[TokenType::Var]) {
+                Some(self.var_declaration()?)
+            } else {
+                Some(self.expression_statement()?)
+            };
+
+        let condition =
+            if !self.check(&TokenType::Semicolon) {
+                self.expression()?
+            } else {
+                Box::new(Expr::BoolLiteral(true))
+            };
+        self.consume(TokenType::Semicolon)?;
+
+        let increment =
+            if !self.check(&TokenType::RightParen) {
+                Some(self.expression()?)
+            } else {
+                None
+            };
+        self.consume(TokenType::RightParen)?;
+
+        let mut body = self.statement()?;
+
+        match increment {
+            Some(expr) => {
+                let mut statements = Vec::new();
+                statements.push(body);
+                statements.push(Statement::Expression(expr));
+
+                body = Statement::Block(statements);
+            }
+            None => {}
+        }
+
+        body = Statement::While(condition, Box::new(body));
+
+        match initializer {
+            Some(statement) => {
+                let mut statements = Vec::new();
+                statements.push(statement);
+                statements.push(body);
+                body = Statement::Block(statements);
+            },
+            None => {}
+        }
+
+        Ok(body)
     }
 
     fn if_statement(&mut self) -> Result<Statement, ParseError> {

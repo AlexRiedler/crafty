@@ -2,7 +2,9 @@ use crate::parser::Visitor;
 use crate::parser::Expr;
 use crate::parser::Statement;
 
-pub struct AstPrinter;
+pub struct AstPrinter {
+    pub indent: u32,
+}
 impl AstPrinter {
     pub fn print(&mut self, statements: &Vec<Statement>) {
         for statement in statements.iter() {
@@ -36,21 +38,40 @@ impl Visitor<String> for AstPrinter {
                 Some(else_statement) => format!("if {} then {} else {}", self.visit_expr(expr), self.visit_statement(then_statement), self.visit_statement(else_statement)),
                 None => format!("if {} then {}", self.visit_expr(expr), self.visit_statement(then_statement)),
             },
-            Statement::Print(ref expr) => format!("print {}", self.visit_expr(expr)),
+            Statement::Print(ref expr) => format!("print {};", self.visit_expr(expr)),
             Statement::While(ref condition, ref body) => format!("while {} {}", self.visit_expr(condition), self.visit_statement(body)),
             Statement::Var(token, initializer) => {
                 match initializer {
-                    Some(expr) => format!("var {} = {}", token.lexeme.to_string(), self.visit_expr(expr)),
+                    Some(expr) => format!("var {} = {};", token.lexeme.to_string(), self.visit_expr(expr)),
                     None => format!("var {};", token.lexeme.to_string()),
                 }
             },
             Statement::Block(statements) => {
-                statements.iter()
-                    .map(|statement| self.visit_statement(statement))
+                let mut s = String::new();
+                s.push('{');
+                s.push('\n');
+
+                self.indent += 2;
+                let string = statements.iter()
+                    .map(|statement| left_pad(self.indent, self.visit_statement(statement)))
                     .collect::<Vec<String>>()
-                    .join("\n")
+                    .join("\n");
+                s.push_str(&string);
+                s.push('\n');
+                self.indent -= 2;
+
+                s.push_str(&left_pad(self.indent, "}".to_string()));
+                s
             }
         }
     }
+}
+
+// TODO: use trait?
+fn left_pad(amount: u32, string: String) -> String {
+    let mut s = String::new();
+    for _ in 0..amount { s.push(' ') }
+    s.push_str(&string);
+    s
 }
 
